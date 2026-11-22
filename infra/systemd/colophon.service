@@ -1,0 +1,21 @@
+[Unit]
+Description=colophon: how to use each of your services, programs and devices
+After=network-online.target
+
+[Service]
+Type=simple
+Environment=COLOPHON_ENTRIES_DIR=%h/prod/colophon/entries
+Environment=COLOPHON_STATE_DIR=%h/prod/colophon/state
+Environment=COLOPHON_ASSETS_DIR=%h/prod/colophon/src/assets
+Environment=COLOPHON_BIND=127.0.0.1
+Environment=COLOPHON_PORT=8796
+# Everything specific to this deployment is in the env file, written by
+# `make prod-env`: COLOPHON_PUBLIC_URL, and optionally COLOPHON_ROSTER_URL,
+# COLOPHON_ROSTER_TOKEN and COLOPHON_TAILSCALE_SOCKET.
+EnvironmentFile=-%h/prod/colophon/state/colophon.env
+ExecStart=%h/prod/colophon/venv/bin/python -m colophon.server
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

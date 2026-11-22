@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Colophon{% endblock %}</title>
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#1F4FD1">
+<link rel="stylesheet" href="/_static/style.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">
+    {# /_brand/logo serves assets/logo.svg, or a placeholder in a checkout without it. #}
+    <img class="brand-logo" src="{{ logo_url }}" alt="" width="32" height="32">
+    <span class="brand-name">Colophon</span>
+  </a>
+  <nav class="top-links">
+    <a href="/index.md">index.md</a>
+    <a href="/index.json">index.json</a>
+  </nav>
+</header>
+<main>
+{% block main %}{% endblock %}
+</main>
+{% block scripts %}{% endblock %}
+</body>
+</html>

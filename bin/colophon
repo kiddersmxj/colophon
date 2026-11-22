@@ -1,0 +1,11 @@
+#!/usr/bin/env python3
+"""Run the colophon CLI from this checkout. Link it onto PATH with
+`make cli-install`. Standard library only, so any python 3.11+ will do."""
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+
+from colophon.cli import main  # noqa: E402
+
+sys.exit(main())

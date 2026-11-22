@@ -1,0 +1,8 @@
+# Copy to colophon.conf (git ignores it). The CLI reads it at run time, so it
+# holds in scripts and services too, after --server, $COLOPHON_URL and the
+# project's .colophon marker. `make deploy` copies it to the prod checkout.
+
+# Where the server is reached.
+server: https://colophon.example.lan
+# Optional: the one machine whose ~/.claude/skills takes pointer skills.
+# skills_host: laptop

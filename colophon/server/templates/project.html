@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}{{ p.title }} · Colophon{% endblock %}
+{% block main %}
+<a class="back" href="/">All projects</a>
+
+<section class="entry-head">
+  <img class="entry-icon" src="/{{ p.name }}/icon" alt="" width="88" height="88">
+  <div>
+    <h1>{{ p.title }}</h1>
+    <p class="lede">{{ p.summary }}</p>
+    <div class="meta">
+      <span class="kind">{{ p.kind }}</span>
+      {% for a in p.access or [] %}<span class="badge badge-access">{{ access[a] }}</span>{% endfor %}
+    </div>
+  </div>
+</section>
+
+<div class="entry">
+  <section class="docs">
+    {% if pr.docs %}
+    <ul class="doc-list">
+      {% for d in pr.docs %}
+      <li>
+        <a href="/{{ p.name }}/{{ d.name }}">
+          <span class="badge badge-guide">{{ d.meta.type }}</span>
+          <span class="doc-title">{{ d.title }}</span>
+          <span class="doc-summary">{{ d.meta.summary }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">No docs.</p>
+    {% endif %}
+  </section>
+
+  <aside class="side">
+    <section class="panel">
+      <h3>Facts</h3>
+      <dl class="facts">
+        {% for k, v in lines %}
+        <dt>{{ k }}</dt>
+        <dd>{% if k == "address" %}<a href="{{ v }}">{{ v }}</a>{% else %}{{ v }}{% endif %}</dd>
+        {% endfor %}
+      </dl>
+      {% if facts and facts.available == false %}<p class="muted small">Roster unavailable.</p>{% endif %}
+    </section>
+
+    <section class="panel">
+      <h3>Files</h3>
+      <ul class="links">
+        <li><a href="/{{ p.name }}.md">{{ p.name }}.md</a></li>
+        <li><a href="/{{ p.name }}.json">{{ p.name }}.json</a></li>
+      </ul>
+    </section>
+
+    <section class="panel">
+      <h3>History</h3>
+      {% if history %}
+      <ol class="history">
+        {% for h in history %}
+        <li>
+          {% set who = h.subject.split(": ", 1) %}
+          <span class="what">{% if who[0] == p.name %}{{ who[-1] }}{% elif who[0].startswith(p.name ~ "/") %}{{ h.subject[p.name|length + 1:] }}{% else %}{{ h.subject }}{% endif %}</span>
+          <span class="who">{{ h.author }}{% if h.machine %} on {{ h.machine }}{% endif %}</span>
+          <time datetime="{{ h.date }}">{{ h.date[:10] }}</time>
+        </li>
+        {% endfor %}
+      </ol>
+      {% else %}<p class="muted small">No commits yet.</p>{% endif %}
+    </section>
+  </aside>
+</div>
+
+<details class="edit" id="edit">
+  <summary>Edit</summary>
+
+  <form id="profile-form" class="form">
+    <h3>Profile</h3>
+    <label>Title <input name="title" value="{{ p.title }}" required></label>
+    <label>Summary <input name="summary" value="{{ p.summary }}" required maxlength="200"></label>
+    <label>Kind
+      <select name="kind">{% if p.kind not in kinds %}<option value="" selected>{{ p.kind }} (choose a kind)</option>{% endif %}{% for k in kinds %}<option {% if k == p.kind %}selected{% endif %}>{{ k }}</option>{% endfor %}</select>
+    </label>
+    <fieldset class="checks">
+      <legend>Access</legend>
+      {% for a, label in access.items() %}<label><input type="checkbox" name="access" value="{{ a }}" {% if a in (p.access or []) %}checked{% endif %}> {{ label }}</label>{% endfor %}
+    </fieldset>
+    <div class="row">
+      <label>Repo <input name="repo" value="{{ p.repo or '' }}"></label>
+      <label>Remote <input name="remote" value="{{ p.remote or '' }}"></label>
+    </div>
+    <div class="row">
+      <label>Roster service <input name="roster" value="{{ p.roster or '' }}"></label>
+      <label>Machine <input name="machine" value="{{ p.machine or '' }}"></label>
+    </div>
+    <button type="submit">Save profile</button>
+  </form>
+
+  <form id="icon-form" class="form">
+    <h3>Icon</h3>
+    <input type="file" name="icon" accept="image/png,image/svg+xml,image/x-icon" required>
+    <button type="submit">Replace icon</button>
+  </form>
+
+  <form id="doc-form" class="form">
+    <h3>New doc</h3>
+    <div class="row">
+      <label>Name <input name="name" required pattern="[a-z0-9][a-z0-9-]{0,39}"></label>
+      <label>Type
+        <select name="type">{% for t in types %}<option>{{ t }}</option>{% endfor %}</select>
+      </label>
+    </div>
+    <label>Title <input name="title"></label>
+    <label>Summary <input name="summary" required maxlength="200"></label>
+    <label>Trigger <textarea name="trigger" rows="3" maxlength="1024"></textarea></label>
+    <textarea name="body" rows="16" class="mono">{{ templates[types[0]] }}</textarea>
+    <button type="submit">Add doc</button>
+  </form>
+  <p id="edit-status" class="status" role="status"></p>
+</details>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const name = {{ p.name|tojson }};
+  const status = document.getElementById("edit-status");
+  async function send(method, path, body, type, then) {
+    status.textContent = "Saving...";
+    status.className = "status";
+    const r = await fetch(path, {method, body, headers: type ? {"Content-Type": type} : {}});
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      status.textContent = data.error || ("Failed: " + r.status);
+      status.className = "status bad";
+      return;
+    }
+    status.textContent = data.changed === false ? "No change." :
+      (data.pushed === false ? "Saved, not pushed." : "Saved.");
+    if (data.changed !== false) setTimeout(() => then ? then() : location.reload(), 400);
+  }
+  document.getElementById("profile-form").addEventListener("submit", e => {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    const body = {};
+    for (const k of ["title", "summary", "kind", "repo", "remote", "roster", "machine"]) body[k] = f.get(k).trim();
+    body.access = f.getAll("access");
+    send("PUT", `/${name}/profile`, JSON.stringify(body), "application/json");
+  });
+  document.getElementById("icon-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const file = new FormData(e.target).get("icon");
+    send("PUT", `/${name}/icon`, await file.arrayBuffer(), file.type || "application/octet-stream");
+  });
+  document.getElementById("doc-form").addEventListener("submit", e => {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    const doc = {};
+    for (const k of ["name", "type", "title", "summary", "trigger"]) {
+      const v = f.get(k).trim();
+      if (v) doc[k] = v;
+    }
+    send("POST", `/${name}/docs`, JSON.stringify({doc, body: f.get("body")}), "application/json",
+         () => { location.href = `/${name}/${doc.name}`; });
+  });
+  if (location.hash === "#edit") document.getElementById("edit").open = true;
+})();
+</script>
+{% endblock %}

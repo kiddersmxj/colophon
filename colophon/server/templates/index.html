@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block main %}
+<section class="filters" aria-label="Filter">
+  <input id="q" type="search" placeholder="Filter" autocomplete="off">
+  <div class="chips" id="kinds" role="group" aria-label="Kind">
+    <button class="chip on" data-kind="">All</button>
+    {% for k in kinds %}<button class="chip" data-kind="{{ k }}">{{ k }}</button>{% endfor %}
+  </div>
+  {% if access %}
+  <div class="chips" id="access" role="group" aria-label="Access">
+    {% for a, label in access.items() %}<button class="chip chip-access" data-access="{{ a }}" aria-pressed="false">{{ label }}</button>{% endfor %}
+  </div>
+  {% endif %}
+  {% if machines %}
+  <select id="machine" aria-label="Machine">
+    <option value="">Any machine</option>
+    {% for m in machines %}<option value="{{ m }}">{{ m }}</option>{% endfor %}
+  </select>
+  {% endif %}
+  <span class="count">{{ rows|length }} {{ "project" if rows|length == 1 else "projects" }}</span>
+</section>
+
+{% if rows %}
+<ul class="grid" id="grid">
+  {% for r in rows %}
+  <li class="card" data-kind="{{ r.kind }}" data-machine="{{ r.machine or '' }}" data-access="{{ (r.access or [])|join(' ') }}"
+      data-text="{{ (r.name ~ ' ' ~ r.title ~ ' ' ~ r.summary ~ ' ' ~ (r.machine or '') ~ ' ' ~ r.kind ~ ' ' ~ (r.docs|map(attribute='name')|join(' ')))|lower }}">
+    <a href="/{{ r.name }}">
+      <img class="card-icon" src="/{{ r.name }}/icon" alt="" width="56" height="56" loading="lazy">
+      <div class="card-body">
+        <div class="card-head">
+          <h2>{{ r.title }}</h2>
+          {% for t in r.docs|map(attribute='type')|unique %}<span class="badge badge-guide">{{ t }}</span>{% endfor %}
+        </div>
+        <p>{{ r.summary }}</p>
+        <div class="meta"><span class="kind">{{ r.kind }}</span>{% for a in r.access or [] %}<span class="badge badge-access">{{ labels[a] }}</span>{% endfor %}{% if r.machine %}<span>{{ r.machine }}</span>{% endif %}</div>
+      </div>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+<p class="empty" id="none" hidden>Nothing matches.</p>
+{% else %}
+<div class="empty-state">
+  <p>No projects. Add one with <code>colophon init</code>.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const q = document.getElementById("q");
+  const m = document.getElementById("machine");
+  const cards = [...document.querySelectorAll(".card")];
+  const none = document.getElementById("none");
+  let kind = "";
+  const want = new Set();
+  function apply() {
+    const words = q.value.toLowerCase().split(/\s+/).filter(Boolean);
+    const mach = m ? m.value : "";
+    let shown = 0;
+    for (const c of cards) {
+      const has = c.dataset.access.split(" ");
+      const ok = (!kind || c.dataset.kind === kind)
+        && [...want].every(a => has.includes(a))
+        && (!mach || c.dataset.machine === mach)
+        && words.every(w => c.dataset.text.includes(w));
+      c.hidden = !ok;
+      if (ok) shown++;
+    }
+    if (none) none.hidden = shown > 0;
+  }
+  const kindChips = [...document.querySelectorAll("#kinds .chip")];
+  kindChips.forEach(b => b.addEventListener("click", () => {
+    kindChips.forEach(x => x.classList.remove("on"));
+    b.classList.add("on");
+    kind = b.dataset.kind;
+    apply();
+  }));
+  document.querySelectorAll("#access .chip").forEach(b => b.addEventListener("click", () => {
+    const on = !want.has(b.dataset.access);
+    on ? want.add(b.dataset.access) : want.delete(b.dataset.access);
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-pressed", on);
+    apply();
+  }));
+  q.addEventListener("input", apply);
+  if (m) m.addEventListener("change", apply);
+  document.addEventListener("keydown", e => {
+    if (e.key === "/" && document.activeElement !== q) { e.preventDefault(); q.focus(); }
+  });
+})();
+</script>
+{% endblock %}

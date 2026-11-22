@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}{{ d.title }} · {{ p.title }} · Colophon{% endblock %}
+{% block main %}
+<a class="back" href="/{{ p.name }}">{{ p.title }}</a>
+
+<section class="entry-head">
+  <img class="entry-icon" src="/{{ p.name }}/icon" alt="" width="88" height="88">
+  <div>
+    <h1>{{ d.title }}</h1>
+    <p class="lede">{{ m.summary }}</p>
+    <div class="meta">
+      <span class="badge badge-guide">{{ m.type }}</span>
+    </div>
+  </div>
+</section>
+
+<div class="entry">
+  <article class="guide">
+    {% if stale %}
+    <p class="notice">{{ stale.behind }} commit{{ "" if stale.behind == 1 else "s" }} behind, as of {{ stale.at[:10] }}.</p>
+    {% endif %}
+    {{ d.body|md|safe }}
+  </article>
+
+  <aside class="side">
+    <section class="panel">
+      <h3>Facts</h3>
+      <dl class="facts">
+        <dt>project</dt><dd><a href="/{{ p.name }}">{{ p.title }}</a></dd>
+        <dt>type</dt><dd>{{ m.type }}</dd>
+        {% if d.type.pointer %}<dt>skill</dt><dd>{{ d.name }}</dd>{% endif %}
+        {% if m.written_against %}<dt>written against</dt><dd><code>{{ m.written_against[:9] }}</code></dd>{% endif %}
+        {% if m.updated %}<dt>updated</dt><dd>{{ m.updated }}</dd>{% endif %}
+      </dl>
+    </section>
+
+    <section class="panel">
+      <h3>Files</h3>
+      <ul class="links">
+        <li><a href="/{{ p.name }}/{{ d.name }}.md">{{ d.name }}.md</a></li>
+        <li><a href="/{{ p.name }}/{{ d.name }}.json">{{ d.name }}.json</a></li>
+        {% if d.type.pointer %}<li><a href="/{{ p.name }}/{{ d.name }}/skill.md">pointer skill</a></li>{% endif %}
+      </ul>
+      {% if m.trigger %}<p class="trigger">{{ m.trigger }}</p>{% endif %}
+    </section>
+
+    <section class="panel">
+      <h3>History</h3>
+      {% if history %}
+      <ol class="history">
+        {% for h in history %}
+        <li>
+          <span class="what">{{ h.subject.split(": ", 1)[-1] }}</span>
+          <span class="who">{{ h.author }}{% if h.machine %} on {{ h.machine }}{% endif %}</span>
+          <time datetime="{{ h.date }}">{{ h.date[:10] }}</time>
+        </li>
+        {% endfor %}
+      </ol>
+      {% else %}<p class="muted small">No commits yet.</p>{% endif %}
+    </section>
+  </aside>
+</div>
+
+<details class="edit" id="edit">
+  <summary>Edit</summary>
+
+  <form id="meta-form" class="form">
+    <h3>Doc</h3>
+    <div class="row">
+      <label>Title <input name="title" value="{{ m.title or '' }}"></label>
+      <label>Type
+        <select name="type">{% for t in types %}<option {% if t == m.type %}selected{% endif %}>{{ t }}</option>{% endfor %}</select>
+      </label>
+    </div>
+    <label>Summary <input name="summary" value="{{ m.summary }}" required maxlength="200"></label>
+    <label>Trigger <textarea name="trigger" rows="3" maxlength="1024">{{ m.trigger or "" }}</textarea></label>
+    <button type="submit">Save</button>
+  </form>
+
+  <form id="body-form" class="form">
+    <h3>Body</h3>
+    <p class="muted small">Sections: {{ sections|join(", ") }}</p>
+    <textarea name="body" rows="22" class="mono">{{ d.body }}</textarea>
+    <div class="row-buttons">
+      <button type="submit">Save body</button>
+      <button type="button" class="quiet" id="remove">Remove doc</button>
+    </div>
+  </form>
+  <p id="edit-status" class="status" role="status"></p>
+</details>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const project = {{ p.name|tojson }};
+  const name = {{ d.name|tojson }};
+  const base = `/${project}/${name}`;
+  const status = document.getElementById("edit-status");
+  async function send(method, path, body, type, then) {
+    status.textContent = "Saving...";
+    status.className = "status";
+    const r = await fetch(path, {method, body, headers: type ? {"Content-Type": type} : {}});
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      status.textContent = data.error || ("Failed: " + r.status);
+      status.className = "status bad";
+      return;
+    }
+    status.textContent = data.changed === false ? "No change." :
+      (data.pushed === false ? "Saved, not pushed." : "Saved.");
+    if (data.changed !== false) setTimeout(() => then ? then() : location.reload(), 400);
+  }
+  document.getElementById("meta-form").addEventListener("submit", e => {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    const body = {};
+    for (const k of ["title", "type", "summary", "trigger"]) body[k] = f.get(k).trim();
+    send("PUT", `${base}/meta`, JSON.stringify(body), "application/json");
+  });
+  document.getElementById("body-form").addEventListener("submit", e => {
+    e.preventDefault();
+    send("PUT", base, new FormData(e.target).get("body"), "text/markdown");
+  });
+  document.getElementById("remove").addEventListener("click", () => {
+    if (confirm("Remove this doc?")) send("DELETE", base, null, null, () => { location.href = `/${project}`; });
+  });
+  if (location.hash === "#edit") document.getElementById("edit").open = true;
+})();
+</script>
+{% endblock %}

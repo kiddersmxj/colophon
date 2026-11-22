@@ -1,0 +1,19 @@
+# Copy to local.mk (git ignores it) and fill in. The Makefile includes it.
+
+# The machine the server runs on, as ssh knows it.
+PROD_HOST     = prod.example.lan
+# Where the server is reached; it is also its public URL.
+COLOPHON_URL  = https://colophon.example.lan
+# The entries repo: only the server pushes to it, with a deploy key.
+ENTRIES_REPO  = git@github.com:you/colophon-entries.git
+ENTRIES_GH    = you/colophon-entries
+
+# Optional: a service directory the server reads facts from (see SPEC.md).
+# PROD_ROSTER_URL       = http://directory.example.lan:8790
+# Optional: the email on the server's own commits.
+# PROD_COMMIT_EMAIL     = colophon@example.lan
+# Optional: a tailscaled socket to ask who a caller is.
+# PROD_TAILSCALE_SOCKET = /run/user/1000/tailscaled.sock
+
+# Your own extra targets can go here too, such as registering the server
+# with whatever gives it its address.

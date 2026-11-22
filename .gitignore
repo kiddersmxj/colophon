@@ -1,0 +1,28 @@
+.ccorral
+
+# Local state: a dev server's entries checkout and seen.json.
+var/
+
+# The owner's own settings and service-directory declaration.
+local.mk
+colophon.conf
+.roster
+
+# Secrets
+*.env
+!*.env.example
+
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+
+*.swp
+*~
+.DS_Store
+
+# Local artwork tooling, not part of the project.
+art/
