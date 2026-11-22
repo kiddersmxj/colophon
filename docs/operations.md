@@ -1,5 +1,8 @@
 # Operations
 
+There is no login: anyone who can reach the server can change every page.
+Keep it, and whatever fronts it, on a private network.
+
 ## What runs where
 
 | host | unit | runs from | state |
